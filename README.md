@@ -1,0 +1,2 @@
+# resource
+VILOOK public resource
