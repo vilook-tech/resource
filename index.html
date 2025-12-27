@@ -1,33 +1,261 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VILOOK TECH - App Downloads</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VILOOK TECH – Software Hub</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: { extend: { colors: { brand: '#007acc' } } }
+    }
+  </script>
 </head>
-<body>
-    <header>
-        <div class="logo">
-            <img src="vilook_logo.jpg" alt="VILOOK TECH Logo">
+
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- HEADER -->
+  <header class="bg-white border-b">
+    <div class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold">VILOOK TECH – Software Hub</h1>
+        <p class="text-sm text-slate-500">Download & release history</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- SEARCH -->
+  <div class="max-w-7xl mx-auto px-6 py-5">
+    <input id="search" type="text" placeholder="Search software..."
+      class="w-full md:w-96 px-4 py-2 rounded-lg border focus:ring-2 focus:ring-brand outline-none">
+  </div>
+
+  <!-- CONTENT -->
+  <main class="flex-1 max-w-7xl mx-auto px-6 pb-10">
+    <div id="loading" class="text-center py-10 text-lg">Loading releases…</div>
+    <div id="apps" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+  </main>
+
+  <script>
+    const owner = 'vilook-tech';
+    const repo = 'resource';
+    let allApps = {};
+
+    // NOTE: chỉnh chiều cao notes tại đây
+    const NOTES_MAX_HEIGHT_PX = 220;   // latest notes
+    const NOTES_MAX_HEIGHT_ALL_PX = 180; // notes trong "View all versions"
+
+    async function fetchReleases() {
+      let page = 1;
+      let all = [];
+      while (true) {
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases?per_page=100&page=${page}`);
+        if (!res.ok) break;
+        const data = await res.json();
+        if (data.length === 0) break;
+        all = all.concat(data);
+        page++;
+      }
+      return all.filter(r => !r.draft);
+    }
+
+    function parseReleaseKey(r) {
+      const s = (r.tag_name || r.name || '').trim();
+      const m = s.match(/^(.*)_v?(\d+\.\d+\.\d+)$/);
+      if (!m) return null;
+      return { app: m[1], version: m[2], key: s };
+    }
+
+    function pickBestAsset(assets) {
+      if (!assets || assets.length === 0) return null;
+      const score = (name) => {
+        const n = (name || '').toLowerCase();
+        if (n.endsWith('.exe')) return 100;
+        if (n.endsWith('.msi')) return 90;
+        if (n.endsWith('.zip')) return 80;
+        if (n.endsWith('.7z')) return 70;
+        return 10;
+      };
+      return [...assets].sort((a, b) => score(b.name) - score(a.name))[0];
+    }
+
+    function groupApps(releases) {
+      const apps = {};
+      releases.forEach(r => {
+        const p = parseReleaseKey(r);
+        if (!p) return;
+        if (!apps[p.app]) apps[p.app] = [];
+        apps[p.app].push({ ...r, _app: p.app, _version: p.version, _key: p.key });
+      });
+
+      Object.values(apps).forEach(list =>
+        list.sort((a, b) => new Date(b.published_at || b.created_at) - new Date(a.published_at || a.created_at))
+      );
+      return apps;
+    }
+
+    function escapeHtml(s) {
+      return (s || '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+
+    // Toggle "View all versions"
+    function toggleVersions(btn) {
+      const panel = btn.nextElementSibling;
+      panel.classList.toggle('hidden');
+      btn.textContent = panel.classList.contains('hidden') ? 'View all versions' : 'Hide versions';
+    }
+
+    // Toggle notes open/close (mặc định đóng)
+    function toggleNotes(btn) {
+      const wrap = btn.closest('[data-notes-wrap]');
+      const panel = wrap.querySelector('[data-notes-panel]');
+      const isHidden = panel.classList.toggle('hidden');
+      btn.textContent = isHidden ? 'Show release notes' : 'Hide release notes';
+    }
+
+    function notesBlock(body, maxHeightPx) {
+      const raw = (body || '').trim();
+      const text = raw.length ? escapeHtml(raw) : 'No release notes provided.';
+      const showBtn = raw.length ? '' : 'hidden';
+
+      // Mặc định panel hidden (đóng)
+      return `
+        <div data-notes-wrap>
+          <button class="text-sm text-brand hover:underline ${showBtn}" onclick="toggleNotes(this)">
+            Show release notes
+          </button>
+
+          <div data-notes-panel class="hidden mt-2 bg-slate-50 border rounded p-3 text-sm overflow-auto"
+               style="max-height:${maxHeightPx}px">
+            <pre class="whitespace-pre-wrap">${text}</pre>
+          </div>
+
+          ${raw.length ? `
+            <div class="mt-1 text-xs text-slate-400 ${showBtn}">
+              Scroll to read more…
+            </div>
+          ` : ''}
         </div>
-        <h1>App Downloads</h1>
-        <p>Select an app to view and download its releases.</p>
-        <input type="text" id="search" placeholder="Search apps...">
-    </header>
-    <main id="app">
-        <div id="loading">Loading releases...</div>
-        <div id="error" style="display: none;"></div>
-        <div id="groups" class="app-grid"></div>
-    </main>
-    <footer>
-        <div class="company-info">
-            <h2>VILOOK TECH CO., LTD</h2>
-            <p>Phone: +84 914 396 099 | Email: <a href="mailto:support@vilooktech.com">support@vilooktech.com</a></p>
-            <p>Website: <a href="https://www.vilooktech.com/" target="_blank">www.vilooktech.com</a></p>
-        </div>
-        <p>&copy; 2025 VILOOK TECH CO., LTD. All rights reserved.</p>
-    </footer>
-    <script src="script.js"></script>
+      `;
+    }
+
+    function render(apps, filter = '') {
+      const root = document.getElementById('apps');
+      root.innerHTML = '';
+
+      Object.keys(apps)
+        .filter(a => a.toLowerCase().includes(filter.toLowerCase()))
+        .forEach(app => {
+          const versions = apps[app];
+          const latest = versions[0];
+
+          const latestAsset = pickBestAsset(latest.assets);
+          const latestUrl = latestAsset?.browser_download_url || '#';
+          const latestLabel = latest.tag_name || latest.name || '(no name)';
+
+          const card = document.createElement('div');
+          card.className = 'bg-white rounded-xl border shadow-sm p-5';
+
+          card.innerHTML = `
+            <div class="flex justify-between items-start gap-3">
+              <div class="min-w-0">
+                <h2 class="text-lg font-semibold">${app.replaceAll('_', ' ')}</h2>
+                <p class="text-sm text-slate-500">Latest version: ${escapeHtml(latestLabel)}</p>
+                ${latestAsset
+                  ? `<p class="text-xs text-slate-400 mt-1">File: ${escapeHtml(latestAsset.name)}</p>`
+                  : `<p class="text-xs text-amber-600 mt-1">No assets in this release</p>`
+                }
+              </div>
+
+              <a href="${latestUrl}"
+                 class="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 ${latestAsset ? '' : 'pointer-events-none opacity-50'}">
+                Download
+              </a>
+            </div>
+
+            <div class="mt-4">
+              <p class="text-sm font-medium mb-1">Release notes</p>
+              ${notesBlock(latest.body, NOTES_MAX_HEIGHT_PX)}
+            </div>
+
+            <button class="mt-4 text-sm text-brand hover:underline" onclick="toggleVersions(this)">
+              View all versions
+            </button>
+
+            <div class="hidden mt-4 space-y-3">
+              ${versions.map(v => {
+                const label = v.tag_name || v.name || '(no name)';
+                const a = pickBestAsset(v.assets);
+                const url = a?.browser_download_url || '#';
+
+                return `
+                  <div class="border rounded-lg p-3 bg-slate-50">
+                    <div class="flex justify-between text-sm font-medium gap-3">
+                      <span class="min-w-0 truncate">${escapeHtml(label)}</span>
+                      <a class="text-brand ${a ? '' : 'pointer-events-none opacity-50'}" href="${url}">
+                        Download
+                      </a>
+                    </div>
+
+                    ${a
+                      ? `<div class="text-xs text-slate-400 mt-1">File: ${escapeHtml(a.name)}</div>`
+                      : `<div class="text-xs text-amber-600 mt-1">No assets</div>`
+                    }
+
+                    <div class="mt-2">
+                      <p class="text-xs font-medium mb-1 text-slate-600">Release notes</p>
+                      ${notesBlock(v.body, NOTES_MAX_HEIGHT_ALL_PX)}
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+
+          root.appendChild(card);
+        });
+    }
+
+    async function init() {
+      const releases = await fetchReleases();
+      const loading = document.getElementById('loading');
+      if (loading) loading.remove();
+
+      allApps = groupApps(releases);
+      render(allApps);
+
+      document.getElementById('search')
+        .addEventListener('input', e => render(allApps, e.target.value));
+    }
+
+    init();
+  </script>
+
+  <!-- FOOTER -->
+  <footer class="border-t bg-white mt-auto">
+    <div class="max-w-7xl mx-auto px-6 py-6 text-sm flex flex-col md:flex-row justify-between gap-3">
+      <div class="text-slate-500">
+        <p>
+          Source: GitHub Releases —
+          <a class="text-brand hover:underline"
+            href="https://github.com/vilook-tech/resource/releases" target="_blank" rel="noopener">
+            Open repository releases
+          </a>
+        </p>
+      </div>
+
+      <div class="md:text-right text-slate-400 self-end">
+        © 2025 VILOOK TECH CO., LTD<br>
+        Internal software distribution portal
+      </div>
+    </div>
+  </footer>
+
 </body>
+
 </html>
