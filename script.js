@@ -1,6 +1,8 @@
 const owner = 'vilook-tech'; // Replace with your GitHub username
 const repo = 'resource'; // Replace with your repository name
 
+let allGroups = {};
+
 async function fetchReleases() {
     try {
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`);
@@ -43,14 +45,17 @@ function groupReleases(releases) {
     return groups;
 }
 
-function renderGroups(groups) {
+function renderGroups(groups, filter = '') {
     const container = document.getElementById('groups');
     container.innerHTML = '';
-    Object.keys(groups).forEach(group => {
+    const filteredGroups = Object.keys(groups).filter(group => group.toLowerCase().includes(filter.toLowerCase()));
+    filteredGroups.forEach(group => {
         const groupDiv = document.createElement('div');
         groupDiv.className = 'group';
-        groupDiv.innerHTML = `<h2>${group.replace(/_/g, ' ')}</h2>`;
-        groups[group].forEach(release => {
+        groupDiv.dataset.showAll = 'false';
+        groupDiv.innerHTML = `<h2>${group.replace(/_/g, ' ')}</h2><button class="toggle-btn" onclick="toggleVersions('${group}')">Show All Versions</button>`;
+        const releasesToShow = groups[group].slice(0, 1); // Show only latest by default
+        releasesToShow.forEach(release => {
             const releaseDiv = document.createElement('div');
             releaseDiv.className = 'release';
             releaseDiv.innerHTML = `
@@ -65,11 +70,44 @@ function renderGroups(groups) {
                 link.href = asset.browser_download_url;
                 link.textContent = asset.name;
                 releaseDiv.appendChild(link);
-                releaseDiv.appendChild(document.createElement('br'));
             });
             groupDiv.appendChild(releaseDiv);
         });
         container.appendChild(groupDiv);
+    });
+    if (filteredGroups.length === 0) {
+        container.innerHTML = '<p>No apps match your search.</p>';
+    }
+}
+
+function toggleVersions(group) {
+    const groupDivs = document.querySelectorAll('.group');
+    const groupDiv = Array.from(groupDivs).find(div => div.querySelector('h2').textContent === group.replace(/_/g, ' '));
+    const showAll = groupDiv.dataset.showAll === 'true';
+    groupDiv.dataset.showAll = !showAll;
+    const btn = groupDiv.querySelector('.toggle-btn');
+    btn.textContent = showAll ? 'Show All Versions' : 'Show Latest Only';
+    const releases = allGroups[group];
+    const releasesToShow = showAll ? releases.slice(0, 1) : releases;
+    const existingReleases = groupDiv.querySelectorAll('.release');
+    existingReleases.forEach(el => el.remove());
+    releasesToShow.forEach(release => {
+        const releaseDiv = document.createElement('div');
+        releaseDiv.className = 'release';
+        releaseDiv.innerHTML = `
+            <h3>${release.name}</h3>
+            <p><strong>Release Notes:</strong></p>
+            <p>${release.body || 'No release notes available.'}</p>
+            <p><strong>Downloads:</strong></p>
+        `;
+        release.assets.forEach(asset => {
+            const link = document.createElement('a');
+            link.className = 'download-link';
+            link.href = asset.browser_download_url;
+            link.textContent = asset.name;
+            releaseDiv.appendChild(link);
+        });
+        groupDiv.appendChild(releaseDiv);
     });
 }
 
@@ -78,9 +116,13 @@ async function init() {
     const releases = await fetchReleases();
     document.getElementById('loading').style.display = 'none';
     if (releases.length > 0) {
-        const groups = groupReleases(releases);
-        renderGroups(groups);
+        allGroups = groupReleases(releases);
+        renderGroups(allGroups);
     }
+    // Add search functionality
+    document.getElementById('search').addEventListener('input', (e) => {
+        renderGroups(allGroups, e.target.value);
+    });
 }
 
 init();

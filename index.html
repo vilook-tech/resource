@@ -3,19 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Releases Downloader</title>
+    <title>VILOOK TECH - App Downloads</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>Download Latest Releases</h1>
+        <div class="logo">
+            <img src="vilook_logo.jpg" alt="VILOOK TECH Logo">
+        </div>
+        <h1>App Downloads</h1>
         <p>Select an app to view and download its releases.</p>
+        <input type="text" id="search" placeholder="Search apps...">
     </header>
     <main id="app">
         <div id="loading">Loading releases...</div>
         <div id="error" style="display: none;"></div>
-        <div id="groups"></div>
+        <div id="groups" class="app-grid"></div>
     </main>
+    <footer>
+        <div class="company-info">
+            <h2>VILOOK TECH CO., LTD</h2>
+            <p>Phone: +84 914 396 099 | Email: <a href="mailto:support@vilooktech.com">support@vilooktech.com</a></p>
+            <p>Website: <a href="https://www.vilooktech.com/" target="_blank">www.vilooktech.com</a></p>
+        </div>
+        <p>&copy; 2025 VILOOK TECH CO., LTD. All rights reserved.</p>
+    </footer>
     <script src="script.js"></script>
 </body>
 </html>
