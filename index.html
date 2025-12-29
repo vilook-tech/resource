@@ -4,9 +4,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/x-icon" href="vilook_logo.ico" />
   <title data-i18n="title">VILOOK TECH – Software Hub</title>
-
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script>
     tailwind.config = {
       theme: { extend: { colors: { brand: '#007acc' } } }
@@ -153,7 +154,7 @@
 
     function notesBlock(body, maxHeightPx) {
       const raw = (body || '').trim();
-      const text = raw.length ? escapeHtml(raw) : translations[currentLang].noReleaseNotes;
+      const text = raw.length ? marked.parse(raw) : translations[currentLang].noReleaseNotes;
       const showBtn = raw.length ? '' : 'hidden';
 
       // Mặc định panel hidden (đóng)
@@ -165,7 +166,7 @@
 
           <div data-notes-panel class="hidden mt-2 bg-slate-50 border rounded p-3 text-sm overflow-auto"
                style="max-height:${maxHeightPx}px">
-            <pre class="whitespace-pre-wrap">${text}</pre>
+            <div class="text-sm">${text}</div>
           </div>
 
           ${raw.length ? `
