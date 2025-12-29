@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VILOOK TECH – Software Hub</title>
+  <title data-i18n="title">VILOOK TECH – Software Hub</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -20,8 +20,17 @@
   <header class="bg-white border-b">
     <div class="max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-semibold">VILOOK TECH – Software Hub</h1>
-        <p class="text-sm text-slate-500">Download & release history</p>
+        <h1 class="text-xl font-semibold" data-i18n="title">VILOOK TECH – Software Hub</h1>
+        <p class="text-sm text-slate-500" data-i18n="subtitle">Download & release history</p>
+      </div>
+      <div class="flex items-center gap-4">
+        <select id="lang-select" onchange="setLanguage(this.value)" class="px-3 py-1 border rounded">
+          <option value="en" selected>English</option>
+          <option value="vi">Tiếng Việt</option>
+          <option value="zh">中文</option>
+          <option value="ko">한국어</option>
+          <option value="ja">日本語</option>
+        </select>
       </div>
     </div>
   </header>
@@ -34,11 +43,35 @@
 
   <!-- CONTENT -->
   <main class="flex-1 max-w-7xl mx-auto px-6 pb-10">
-    <div id="loading" class="text-center py-10 text-lg">Loading releases…</div>
+    <div id="loading" class="text-center py-10 text-lg" data-i18n="loading">Loading releases…</div>
     <div id="apps" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
   </main>
 
   <script>
+    let translations = {};
+    let currentLang = 'en';
+
+    async function loadTranslations() {
+      const res = await fetch('translations.json');
+      translations = await res.json();
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang;
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (translations[lang] && translations[lang][key]) {
+          el.textContent = translations[lang][key];
+        }
+      });
+      // Update placeholders
+      const searchInput = document.getElementById('search');
+      if (searchInput) searchInput.placeholder = translations[lang]?.searchPlaceholder || '';
+      // Re-render if needed
+      if (allApps) render(allApps, document.getElementById('search').value);
+    }
+
     const owner = 'vilook-tech';
     const repo = 'resource';
     let allApps = {};
@@ -107,7 +140,7 @@
     function toggleVersions(btn) {
       const panel = btn.nextElementSibling;
       panel.classList.toggle('hidden');
-      btn.textContent = panel.classList.contains('hidden') ? 'View all versions' : 'Hide versions';
+      btn.textContent = panel.classList.contains('hidden') ? translations[currentLang].viewAllVersions : translations[currentLang].hideVersions;
     }
 
     // Toggle notes open/close (mặc định đóng)
@@ -115,19 +148,19 @@
       const wrap = btn.closest('[data-notes-wrap]');
       const panel = wrap.querySelector('[data-notes-panel]');
       const isHidden = panel.classList.toggle('hidden');
-      btn.textContent = isHidden ? 'Show release notes' : 'Hide release notes';
+      btn.textContent = isHidden ? translations[currentLang].showReleaseNotes : translations[currentLang].hideReleaseNotes;
     }
 
     function notesBlock(body, maxHeightPx) {
       const raw = (body || '').trim();
-      const text = raw.length ? escapeHtml(raw) : 'No release notes provided.';
+      const text = raw.length ? escapeHtml(raw) : translations[currentLang].noReleaseNotes;
       const showBtn = raw.length ? '' : 'hidden';
 
       // Mặc định panel hidden (đóng)
       return `
         <div data-notes-wrap>
           <button class="text-sm text-brand hover:underline ${showBtn}" onclick="toggleNotes(this)">
-            Show release notes
+            ${translations[currentLang].showReleaseNotes}
           </button>
 
           <div data-notes-panel class="hidden mt-2 bg-slate-50 border rounded p-3 text-sm overflow-auto"
@@ -137,7 +170,7 @@
 
           ${raw.length ? `
             <div class="mt-1 text-xs text-slate-400 ${showBtn}">
-              Scroll to read more…
+              ${translations[currentLang].scrollMore}
             </div>
           ` : ''}
         </div>
@@ -165,26 +198,26 @@
             <div class="flex justify-between items-start gap-3">
               <div class="min-w-0">
                 <h2 class="text-lg font-semibold">${app.replaceAll('_', ' ')}</h2>
-                <p class="text-sm text-slate-500">Latest version: ${escapeHtml(latestLabel)}</p>
+                <p class="text-sm text-slate-500">${translations[currentLang].latestVersion} ${escapeHtml(latestLabel)}</p>
                 ${latestAsset
-                  ? `<p class="text-xs text-slate-400 mt-1">File: ${escapeHtml(latestAsset.name)}</p>`
-                  : `<p class="text-xs text-amber-600 mt-1">No assets in this release</p>`
+                  ? `<p class="text-xs text-slate-400 mt-1">${translations[currentLang].file} ${escapeHtml(latestAsset.name)}</p>`
+                  : `<p class="text-xs text-amber-600 mt-1">${translations[currentLang].noAssets}</p>`
                 }
               </div>
 
               <a href="${latestUrl}"
                  class="bg-brand text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 ${latestAsset ? '' : 'pointer-events-none opacity-50'}">
-                Download
+                ${translations[currentLang].download}
               </a>
             </div>
 
             <div class="mt-4">
-              <p class="text-sm font-medium mb-1">Release notes</p>
+              <p class="text-sm font-medium mb-1">${translations[currentLang].releaseNotes}</p>
               ${notesBlock(latest.body, NOTES_MAX_HEIGHT_PX)}
             </div>
 
             <button class="mt-4 text-sm text-brand hover:underline" onclick="toggleVersions(this)">
-              View all versions
+              ${translations[currentLang].viewAllVersions}
             </button>
 
             <div class="hidden mt-4 space-y-3">
@@ -198,17 +231,17 @@
                     <div class="flex justify-between text-sm font-medium gap-3">
                       <span class="min-w-0 truncate">${escapeHtml(label)}</span>
                       <a class="text-brand ${a ? '' : 'pointer-events-none opacity-50'}" href="${url}">
-                        Download
+                        ${translations[currentLang].download}
                       </a>
                     </div>
 
                     ${a
-                      ? `<div class="text-xs text-slate-400 mt-1">File: ${escapeHtml(a.name)}</div>`
-                      : `<div class="text-xs text-amber-600 mt-1">No assets</div>`
+                      ? `<div class="text-xs text-slate-400 mt-1">${translations[currentLang].file} ${escapeHtml(a.name)}</div>`
+                      : `<div class="text-xs text-amber-600 mt-1">${translations[currentLang].noAssets}</div>`
                     }
 
                     <div class="mt-2">
-                      <p class="text-xs font-medium mb-1 text-slate-600">Release notes</p>
+                      <p class="text-xs font-medium mb-1 text-slate-600">${translations[currentLang].releaseNotes}</p>
                       ${notesBlock(v.body, NOTES_MAX_HEIGHT_ALL_PX)}
                     </div>
                   </div>
@@ -222,6 +255,7 @@
     }
 
     async function init() {
+      await loadTranslations();
       const releases = await fetchReleases();
       const loading = document.getElementById('loading');
       if (loading) loading.remove();
@@ -231,6 +265,8 @@
 
       document.getElementById('search')
         .addEventListener('input', e => render(allApps, e.target.value));
+
+      setLanguage('en');
     }
 
     init();
@@ -239,7 +275,7 @@
   <!-- FOOTER -->
   <footer class="border-t bg-white mt-auto">
   <div class="max-w-7xl mx-auto px-6 py-6 text-sm text-slate-400 text-center space-y-2">
-    <p>
+    <p data-i18n="footerText">
       © 2025 <span class="text-slate-600 font-medium">VILOOK TECH CO., LTD</span> —
       Internal software distribution portal
     </p>
@@ -247,17 +283,17 @@
     <p>
       <a href="https://github.com/vilook-tech/resource/releases"
          class="text-brand hover:underline" target="_blank" rel="noopener">
-        GitHub Releases
+        <span data-i18n="githubReleases">GitHub Releases</span>
       </a>
       ·
       <a href="https://www.vilooktech.com/"
          class="text-brand hover:underline" target="_blank" rel="noopener">
-        Website
+        <span data-i18n="website">Website</span>
       </a>
       ·
       <a href="mailto:support@vilooktech.com"
          class="text-brand hover:underline">
-        Support
+        <span data-i18n="support">Support</span>
       </a>
     </p>
   </div>
